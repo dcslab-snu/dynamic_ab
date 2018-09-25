@@ -86,6 +86,8 @@ def main() -> None:
     generate_cmd.add_argument('-a', '--alpha', type=float, default=0.3,
                               help='the shape parameter of Pareto distribution (default: 0.3)')
     generate_cmd.add_argument('-d', '--duration', required=True, type=int, help='total time (second) of experiment')
+    generate_cmd.add_argument('-m', '--maximum-concurrency', type=int, default=1000,
+                              help='maximum concurrency limit (default: 1000)')
     generate_cmd.add_argument('-o', '--output', type=str, default=None,
                               help='The location of the file where the script will be stored')
 
@@ -101,7 +103,7 @@ def main() -> None:
         script = Script.from_dict(json_dict)
 
     elif command == 'g':
-        script = generate_script(args.url, args.duration, args.alpha, range(1, 3))
+        script = generate_script(args.url, args.duration, args.alpha, args.maximum_concurrency, range(1, 3))
 
         if args.output is not None:
             with open(args.output, 'w') as fp:
