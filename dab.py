@@ -46,10 +46,14 @@ async def _store_csv_result(latencies: List[int]) -> None:
         await afp.write('Percentage served,Time in ms\n')
 
         for per in range(100):
-            idx = math.ceil(size * per / 100)
+            idx = int(math.ceil(size * per / 100))
 
             await afp.write(f'{per},{latencies[idx]}\n')
 
+        await afp.write(f'99.5,{latencies[min(math.ceil(size * 99.5 / 100), size - 1)]}\n')
+        await afp.write(f'99.9,{latencies[min(math.ceil(size * 99.9 / 100), size - 1)]}\n')
+        await afp.write(f'99.99,{latencies[min(math.ceil(size * 99.99 / 100), size - 1)]}\n')
+        await afp.write(f'99.999,{latencies[min(math.ceil(size * 99.999 / 100), size - 1)]}\n')
         await afp.write(f'100,{latencies[-1]}\n')
 
 
