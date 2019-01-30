@@ -31,18 +31,22 @@ async def _run_ab(url: str, concurrency: int, timeout: int, requests: int, verbo
     return output_file
 
 
-async def _parse_tsv(file_path: str) -> Tuple[int, ...]:
+async def _parse_tsv(file_path: str) -> Tuple[Tuple[int, int], ...]:
     async with aiofiles.open(file_path) as afp:
         head_arr = (await afp.readline()).split('\t')
         ttime_idx = head_arr.index('ttime')
+        seconds_idx = head_arr.index('seconds')
 
-        return tuple(int(line.split('\t')[ttime_idx]) for line in await afp.readlines())
+        return tuple(
+                (int(line.split('\t')[ttime_idx]), int(line.split('\t')[seconds_idx]))
+                for line in await afp.readlines()
+        )
 
 
-async def _store_csv_result(latencies: List[int]) -> None:
+async def _store_tail_latency(latencies: List[int]) -> None:
     size = len(latencies)
 
-    async with aiofiles.open('result.csv', 'w') as afp:
+    async with aiofiles.open('tail_latency.csv', 'w') as afp:
         await afp.write('Percentage served,Time in ms\n')
 
         for per in range(100):
@@ -57,6 +61,14 @@ async def _store_csv_result(latencies: List[int]) -> None:
         await afp.write(f'100,{latencies[-1]}\n')
 
 
+async def _store_result(result: List[Tuple[Tuple[int, int], ...]]) -> None:
+    async with aiofiles.open('result.csv', 'w') as afp:
+        await afp.write('latency,start seconds\n')
+
+        for latency, seconds in chain(*result):
+            await afp.write(f'{seconds},{latency}\n')
+
+
 async def _interpret(script: Script, verbose: bool) -> None:
     url = script.url
 
@@ -66,10 +78,12 @@ async def _interpret(script: Script, verbose: bool) -> None:
         output_file: str = await _run_ab(url, entry.concurrency, entry.timeout, entry.requests, verbose)
         result_files.append(output_file)
 
-    latencies_list: List[Tuple[int, ...]] = await asyncio.gather(*(_parse_tsv(file_path) for file_path in result_files))
-    latencies: List[int, ...] = sorted(chain(*latencies_list))
+    parsed_list: List[Tuple[Tuple[int, int], ...]] = \
+        await asyncio.gather(*(_parse_tsv(file_path) for file_path in result_files))
+    latencies: List[int, ...] = sorted(p[0] for p in chain(*parsed_list))
 
-    await _store_csv_result(latencies)
+    await _store_tail_latency(latencies)
+    await _store_result(parsed_list)
 
     for file_path in result_files:
         os.remove(file_path)
