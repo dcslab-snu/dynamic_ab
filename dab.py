@@ -107,7 +107,7 @@ def main() -> None:
         script = Script.from_dict(json_dict)
 
     elif command == 'g':
-        script = generate_script(args.url, args.duration, args.alpha, args.maximum_concurrency, range(1, 3))
+        script = generate_script(args.url, args.duration, args.alpha, args.maximum_concurrency)
 
         if args.output is not None:
             with open(args.output, 'w') as fp:
