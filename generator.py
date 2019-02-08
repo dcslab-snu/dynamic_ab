@@ -44,17 +44,29 @@ class Script:
         )
 
 
-def generate_script(url: str, duration: int, alpha: float, maximum_concurrency: int, timeout_range: range) -> Script:
+def _calc_approximated_requests(duration: float, concurrency: int) -> int:
+    # FIXME: hard coded
+    if 0 < concurrency <= 8:
+        ret = (concurrency * 37.142857143 + 50) * duration
+    elif 8 < concurrency <= 16:
+        ret = ((concurrency - 8) * 5 + 310) * duration
+    elif 16 < concurrency <= 170:
+        ret = ((concurrency - 16) * -1.160714286 + 350) * duration
+    else:
+        ret = concurrency * duration
+
+    return max(int(ret), concurrency)
+
+
+def generate_script(url: str, duration: int, alpha: float, maximum_concurrency: int) -> Script:
     entries: List[Entry] = list()
 
     while duration > 0:
-        timeout: int = random.choice(timeout_range)
-        concurrency: int = int(random.paretovariate(alpha))
+        timeout: int = int(random.uniform(1, 5))
+        concurrency: int = min(int(10 ** random.expovariate(alpha)), maximum_concurrency)
+        requests = _calc_approximated_requests(timeout, concurrency)
 
-        if concurrency > maximum_concurrency:
-            concurrency = maximum_concurrency
-
-        entries.append(Entry(timeout, concurrency, 20000))
+        entries.append(Entry(timeout, concurrency, requests))
 
         duration -= timeout
 
@@ -81,7 +93,7 @@ def main():
     duration: int = args.duration
     maximum_concurrency: int = args.maximum_concurrency
 
-    script: Script = generate_script(url, duration, alpha, maximum_concurrency, range(1, 3))
+    script: Script = generate_script(url, duration, alpha, maximum_concurrency)
     json.dump(script.to_dict(), dest_path)
     dest_path.close()
 
